@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chelsigram – Medicine Search</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💊</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0d0f1a;--bg2:#13162a;--card:#1e2340;--card2:#252b4a;
+  --blue:#6c9bff;--blue2:#4f72ff;--violet:#a78bfa;--green:#34d399;--rose:#f472b6;--amber:#fbbf24;
+  --t1:#f0f2ff;--t2:#9ba5c9;--t3:#5a6280;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --r:14px;--font:'Nunito',sans-serif;
+}
+[data-theme=light]{
+  --bg:#f4f6ff;--bg2:#eef0ff;--card:#fff;--card2:#f8f9ff;
+  --t1:#1a1e35;--t2:#4a5280;--t3:#8a93b0;
+  --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+}
+[data-theme=amoled]{--bg:#000;--bg2:#050508;--card:#0d0d14;--card2:#111118;}
+
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t1);overflow:hidden;}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s,transform .6s;}
+#splash.out{opacity:0;transform:scale(1.04);pointer-events:none;}
+.sp-glow{position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(108,155,255,.2) 0%,transparent 70%);pointer-events:none;}
+.sp-av{width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid rgba(108,155,255,.5);animation:float 3s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.sp-title{margin-top:22px;font-family:'DM Serif Display',serif;font-size:38px;color:var(--t1);}
+.sp-sub{margin-top:6px;font-size:12px;color:var(--t3);letter-spacing:2px;text-transform:uppercase;}
+.sp-bar{margin-top:36px;width:150px;height:3px;background:var(--border2);border-radius:10px;overflow:hidden;}
+.sp-fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--violet));border-radius:10px;animation:fill 2.4s ease-out forwards;}
+@keyframes fill{to{width:100%}}
+
+/* LAYOUT */
+#app{display:none;flex-direction:column;height:100vh;}
+#app.on{display:flex;}
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.screen::-webkit-scrollbar{width:3px;}
+.screen::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px;}
+
+/* TOPBAR */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.top-logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--blue);flex:1;}
+.top-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--card2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--t2);transition:.2s;flex-shrink:0;}
+.top-btn:hover{background:var(--bg2);color:var(--t1);}
+
+/* SEARCH BAR */
+.search-wrap{padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);}
+.search-box{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1.5px solid var(--border);border-radius:50px;padding:10px 16px;transition:.2s;}
+.search-box:focus-within{border-color:var(--blue);background:var(--card);}
+.search-box input{flex:1;background:none;border:none;outline:none;font-family:var(--font);font-size:15px;color:var(--t1);}
+.search-box input::placeholder{color:var(--t3);}
+.mic-btn{width:32px;height:32px;border-radius:50%;background:var(--blue-s,rgba(108,155,255,.12));border:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;}
+.mic-btn.on{background:rgba(244,114,182,.15);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(244,114,182,.4)}50%{box-shadow:0 0 0 8px rgba(244,114,182,0)}}
+
+/* BOTTOM NAV */
+.bottom-nav{background:var(--card);border-top:1px solid var(--border);display:flex;flex-shrink:0;}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px 10px;cursor:pointer;transition:.15s;}
+.nav-tab span:first-child{font-size:20px;}
+.nav-tab span:last-child{font-size:10px;color:var(--t3);font-weight:700;letter-spacing:.4px;}
+.nav-tab.on span:last-child{color:var(--blue);}
+.nav-tab.on span:first-child{transform:scale(1.15);}
+
+/* PAGE */
+.page{display:none;animation:fadeIn .25s ease;}
+.page.on{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.pad{padding:16px;}
+
+/* HOME */
+.hero{background:linear-gradient(130deg,#3a5bd9,#5c3dca);border-radius:18px;padding:22px;margin-bottom:20px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05);top:-60px;right:30px;}
+.hero h1{font-family:'DM Serif Display',serif;font-size:24px;color:#fff;line-height:1.25;}
+.hero p{font-size:13px;color:rgba(255,255,255,.7);margin-top:6px;line-height:1.5;}
+.hero-stats{display:flex;gap:20px;margin-top:14px;}
+.hs{text-align:center;}
+.hs-v{font-size:18px;font-weight:900;color:#fff;}
+.hs-l{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;}
+.hero-av{position:absolute;right:16px;top:16px;width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.35);}
+
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sec-title{font-size:11px;font-weight:800;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;}
+.sec-more{font-size:12px;color:var(--blue);font-weight:700;cursor:pointer;padding:4px 8px;border-radius:6px;}
+.sec-more:hover{background:rgba(108,155,255,.1);}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+.chip{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:50px;background:var(--card);border:1px solid var(--border);font-size:13px;color:var(--t2);font-weight:700;cursor:pointer;transition:.18s;}
+.chip:hover,.chip:active{border-color:rgba(108,155,255,.4);color:var(--blue);background:rgba(108,155,255,.08);}
+.chip-x{font-size:10px;color:var(--t3);line-height:1;}
+.chip-x:hover{color:var(--rose);}
+
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.cat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:10px;}
+.cat-card:hover,.cat-card:active{border-color:rgba(108,155,255,.35);transform:translateY(-1px);}
+.cat-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(108,155,255,.1);}
+.cat-name{font-size:13px;font-weight:700;color:var(--t1);}
+.cat-sub{font-size:11px;color:var(--t3);margin-top:2px;}
+
+/* RESULTS */
+.res-hdr{padding:14px 16px 10px;}
+.res-title{font-size:18px;font-weight:800;color:var(--t1);}
+.res-sub{font-size:12px;color:var(--t3);margin-top:3px;}
+.res-list{padding:0 16px;display:flex;flex-direction:column;gap:8px;padding-bottom:20px;}
+.res-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:12px;}
+.res-card:hover,.res-card:active{border-color:rgba(108,155,255,.35);transform:translateX(2px);}
+.res-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(108,155,255,.1);}
+.res-name{font-size:14px;font-weight:700;color:var(--t1);}
+.res-gen{font-size:12px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.res-tag{padding:3px 9px;border-radius:50px;font-size:10px;font-weight:800;flex-shrink:0;margin-left:auto;}
+.tag-rx{background:rgba(167,139,250,.12);color:var(--violet);}
+.tag-otc{background:rgba(52,211,153,.12);color:var(--green);}
+
+/* BACK BTN */
+.back-btn{display:flex;align-items:center;gap:6px;padding:12px 16px 4px;cursor:pointer;color:var(--blue);font-size:14px;font-weight:700;}
+
+/* DETAIL */
+.det-hero{background:linear-gradient(140deg,rgba(108,155,255,.12),rgba(167,139,250,.08));padding:20px 16px;position:relative;}
+.det-name{font-family:'DM Serif Display',serif;font-size:26px;color:var(--t1);line-height:1.2;padding-right:90px;}
+.det-generic{font-size:13px;color:var(--t3);margin-top:4px;}
+.det-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.badge{padding:4px 12px;border-radius:50px;font-size:11px;font-weight:800;}
+.bdg-rx{background:rgba(167,139,250,.12);color:var(--violet);}
+.bdg-otc{background:rgba(52,211,153,.12);color:var(--green);}
+.bdg-fda{background:rgba(108,155,255,.12);color:var(--blue);}
+
+/* AVATAR SPEAKER */
+.av-wrap{position:absolute;top:16px;right:16px;width:76px;height:76px;}
+.av-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--blue);opacity:0;}
+.av-ring.on{animation:ring .9s ease-out infinite;}
+@keyframes ring{0%{opacity:.6;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}
+.av-img{width:76px;height:76px;border-radius:50%;object-fit:cover;border:2.5px solid var(--blue);cursor:pointer;transition:.2s;}
+.av-img.speaking{animation:bob .35s ease-in-out infinite alternate;}
+@keyframes bob{from{transform:scale(1)}to{transform:scale(1.06) translateY(-2px)}}
+
+.info-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px 16px;}
+.itile{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.itile-l{font-size:9px;color:var(--t3);font-weight:800;text-transform:uppercase;letter-spacing:.8px;}
+.itile-v{font-size:13px;font-weight:800;color:var(--t1);margin-top:3px;}
+
+.speak-btn{margin:0 16px 14px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:50px;background:linear-gradient(90deg,var(--blue2),var(--violet));color:#fff;font-size:14px;font-weight:800;cursor:pointer;border:none;font-family:var(--font);width:calc(100% - 32px);transition:.2s;}
+.speak-btn:hover{opacity:.9;}
+.speak-btn.stop{background:linear-gradient(90deg,var(--rose),#e03);}
+
+.speak-bubble{margin:0 16px 14px;background:var(--card2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--t2);line-height:1.7;max-height:0;overflow:hidden;transition:max-height .4s ease;}
+.speak-bubble.on{max-height:200px;}
+
+.det-section{margin:0 16px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.det-sec-title{font-size:10px;font-weight:800;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.det-body{font-size:13px;color:var(--t2);line-height:1.75;}
+.warn-box{margin:0 16px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px 14px;display:flex;gap:10px;}
+.warn-txt{font-size:13px;color:var(--amber);line-height:1.6;}
+.brands-wrap{display:flex;flex-wrap:wrap;gap:8px;}
+.brand-pill{padding:5px 12px;border-radius:50px;background:rgba(108,155,255,.1);border:1px solid rgba(108,155,255,.2);font-size:12px;color:var(--blue);font-weight:700;}
+
+/* HISTORY */
+.hist-list{padding:0 16px;display:flex;flex-direction:column;gap:6px;padding-bottom:20px;}
+.hist-row{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:.15s;}
+.hist-row:hover,.hist-row:active{background:var(--card2);}
+.hist-num{font-size:11px;color:var(--t3);font-weight:700;min-width:22px;}
+.hist-term{flex:1;font-size:14px;font-weight:700;color:var(--t1);}
+.hist-time{font-size:11px;color:var(--t3);}
+.hist-del{font-size:13px;color:var(--t3);cursor:pointer;padding:2px 6px;}
+.hist-del:hover{color:var(--rose);}
+
+/* SETTINGS */
+.set-section{margin:0 16px 14px;}
+.set-label{font-size:10px;font-weight:800;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;}
+.set-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);}
+.set-row:last-child{border-bottom:none;}
+.set-name{font-size:14px;font-weight:700;color:var(--t1);}
+.set-sub{font-size:11px;color:var(--t3);margin-top:2px;}
+.theme-btns{display:flex;gap:6px;}
+.theme-btn{padding:6px 12px;border-radius:7px;border:1.5px solid var(--border);background:var(--card2);font-size:12px;font-weight:800;color:var(--t2);cursor:pointer;font-family:var(--font);transition:.18s;}
+.theme-btn.on{border-color:var(--blue);color:var(--blue);background:rgba(108,155,255,.1);}
+.lang-grid{padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.lang-btn{padding:9px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--card2);font-size:12px;font-weight:700;color:var(--t2);cursor:pointer;font-family:var(--font);text-align:center;transition:.18s;}
+.lang-btn.on{border-color:var(--violet);color:var(--violet);background:rgba(167,139,250,.1);}
+
+/* LOADING / EMPTY */
+.loading{text-align:center;padding:48px 20px;}
+.spinner{display:inline-block;width:30px;height:30px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:13px;color:var(--t3);margin-top:12px;}
+.empty{text-align:center;padding:48px 20px;}
+.empty-ic{font-size:48px;margin-bottom:12px;}
+.empty-t{font-size:15px;font-weight:700;color:var(--t2);}
+.empty-s{font-size:13px;color:var(--t3);margin-top:6px;}
+
+/* PAGINATION */
+.pag{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px;}
+.pb{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;font-family:var(--font);transition:.15s;}
+.pb:hover{border-color:rgba(108,155,255,.4);color:var(--blue);}
+.pb.on{background:var(--blue2);color:#fff;border-color:var(--blue2);}
+.pb:disabled{opacity:.4;cursor:default;}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="sp-glow"></div>
+  <img class="sp-av" src="chelsi.png" alt="Chelsi" onerror="this.style.display='none'">
+  <div class="sp-title">Chelsigram</div>
+  <div class="sp-sub">World Medicine Search</div>
+  <div class="sp-bar"><div class="sp-fill"></div></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="top-logo" id="topLogo">Chelsigram</div>
+    <select id="langSel" style="background:var(--card2);border:1px solid var(--border);color:var(--t2);font-family:var(--font);font-size:12px;padding:6px 8px;border-radius:8px;cursor:pointer;outline:none;">
+      <option value="en-IN">EN</option>
+      <option value="hi-IN">HI</option>
+      <option value="ml-IN">ML</option>
+      <option value="ta-IN">TA</option>
+      <option value="te-IN">TE</option>
+      <option value="kn-IN">KN</option>
+      <option value="bn-IN">BN</option>
+      <option value="fr-FR">FR</option>
+      <option value="de-DE">DE</option>
+      <option value="es-ES">ES</option>
+      <option value="ar-SA">AR</option>
+      <option value="zh-CN">ZH</option>
+    </select>
+    <div class="top-btn" onclick="cycleTheme()" title="Toggle theme">☀</div>
+  </div>
+
+  <!-- SEARCH BAR -->
+  <div class="search-wrap">
+    <div class="search-box">
+      <span style="color:var(--t3);font-size:16px;">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search medicine or drug name...">
+      <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎤</button>
+    </div>
+  </div>
+
+  <!-- SCREEN -->
+  <div class="screen" id="mainScreen">
+
+    <!-- HOME PAGE -->
+    <div class="page on pad" id="pageHome">
+      <div class="hero">
+        <img class="hero-av" src="chelsi.png" onerror="this.style.display='none'" alt="Chelsi">
+        <h1>Find any<br>medicine worldwide</h1>
+        <p>Search by brand, generic name<br>or active ingredient</p>
+        <div class="hero-stats">
+          <div class="hs"><div class="hs-v">130K+</div><div class="hs-l">Medicines</div></div>
+          <div class="hs"><div class="hs-v">190+</div><div class="hs-l">Countries</div></div>
+          <div class="hs"><div class="hs-v">12</div><div class="hs-l">Languages</div></div>
+        </div>
+      </div>
+
+      <div class="sec-hdr">
+        <span class="sec-title">Recent Searches</span>
+        <span class="sec-more" id="showAllBtn" style="display:none" onclick="showPage('history')">Show all →</span>
+      </div>
+      <div class="chips" id="historyChips">
+        <span style="font-size:13px;color:var(--t3);">Your recent searches appear here.</span>
+      </div>
+
+      <div class="sec-hdr"><span class="sec-title">Try These</span></div>
+      <div class="chips" id="quickChips"></div>
+
+      <div class="sec-hdr"><span class="sec-title">Categories</span></div>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+
+    <!-- RESULTS PAGE -->
+    <div class="page" id="pageResults">
+      <div class="back-btn" onclick="goBack()">← Back</div>
+      <div class="res-hdr">
+        <div class="res-title" id="resTitle">Results</div>
+        <div class="res-sub" id="resSub"></div>
+      </div>
+      <div class="res-list" id="resList"></div>
+      <div class="pag" id="resPag"></div>
+    </div>
+
+    <!-- DETAIL PAGE -->
+    <div class="page" id="pageDetail">
+      <div class="back-btn" onclick="goBack()">← Results</div>
+      <div id="detailContent"></div>
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div class="page" id="pageHistory">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;">
+        <div style="font-size:20px;font-weight:800;color:var(--t1);">Search History</div>
+        <div onclick="clearAllHistory()" style="font-size:13px;color:var(--rose);font-weight:700;cursor:pointer;padding:6px 12px;border:1px solid rgba(244,114,182,.3);border-radius:8px;">Clear All</div>
+      </div>
+      <div class="hist-list" id="histList"></div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div class="page" id="pageSettings">
+      <div style="font-size:20px;font-weight:800;color:var(--t1);padding:14px 16px 10px;">Settings</div>
+
+      <div class="set-section">
+        <div class="set-label">Theme</div>
+        <div class="set-card">
+          <div class="set-row">
+            <div><div class="set-name">Display Mode</div></div>
+            <div class="theme-btns" id="themeBtns">
+              <button class="theme-btn on" onclick="setTheme('dark')">Dark</button>
+              <button class="theme-btn" onclick="setTheme('light')">Light</button>
+              <button class="theme-btn" onclick="setTheme('amoled')">AMOLED</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-section">
+        <div class="set-label">Language</div>
+        <div class="set-card">
+          <div class="lang-grid" id="langGrid"></div>
+        </div>
+      </div>
+
+      <div class="set-section">
+        <div class="set-label">Data Sources</div>
+        <div class="set-card">
+          <div class="set-row"><div><div class="set-name">OpenFDA</div><div class="set-sub">US FDA drug label database</div></div><span style="font-size:11px;color:var(--green);font-weight:800;">● Active</span></div>
+          <div class="set-row"><div><div class="set-name">RxNorm</div><div class="set-sub">Clinical drug database (NIH)</div></div><span style="font-size:11px;color:var(--green);font-weight:800;">● Active</span></div>
+        </div>
+      </div>
+
+      <div class="set-section">
+        <div class="set-label">About</div>
+        <div class="set-card">
+          <div class="set-row" style="gap:12px;flex-direction:column;align-items:flex-start;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <img src="chelsi.png" style="width:44px;height:44px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">
+              <div><div class="set-name" style="font-family:'DM Serif Display',serif;">Chelsigram v1.0</div><div class="set-sub">World Medicine Search</div></div>
+            </div>
+            <div style="font-size:12px;color:var(--t3);line-height:1.7;">Data from OpenFDA & RxNorm. For reference only — always consult a healthcare professional before taking any medicine.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-tab on" id="tab-home" onclick="showPage('home')"><span>🏠</span><span>HOME</span></div>
+    <div class="nav-tab" id="tab-results" onclick="showPage('results')"><span>🔍</span><span>SEARCH</span></div>
+    <div class="nav-tab" id="tab-history" onclick="showPage('history')"><span>🕐</span><span>HISTORY</span></div>
+    <div class="nav-tab" id="tab-settings" onclick="showPage('settings')"><span>⚙️</span><span>SETTINGS</span></div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────
+var history = JSON.parse(localStorage.getItem('cg_hist') || '[]');
+var currentPage = 'home';
+var prevPage = 'home';
+var allDrugs = [];
+var currentDrug = null;
+var currentQuery = '';
+var currentResultPage = 1;
+var lang = 'en-IN';
+var theme = 'dark';
+var speaking = false;
+var recog = null;
+var RESULTS_PER_PAGE = 10;
+
+var QUICK = ['Paracetamol','Aspirin','Metformin','Ibuprofen','Amoxicillin','Atorvastatin','Omeprazole','Cetirizine'];
+var CATS = [
+  {ic:'💊',name:'Antibiotics',q:'amoxicillin'},
+  {ic:'❤️',name:'Cardiovascular',q:'atorvastatin'},
+  {ic:'🧠',name:'Neurology',q:'gabapentin'},
+  {ic:'🩺',name:'Diabetes',q:'metformin'},
+  {ic:'🌿',name:'Supplements',q:'vitamin d'},
+  {ic:'🤧',name:'Allergy',q:'cetirizine'},
+];
+var LANGS = [
+  {c:'en-IN',l:'English'},{c:'hi-IN',l:'हिन्दी'},{c:'ml-IN',l:'മലയാളം'},
+  {c:'ta-IN',l:'தமிழ்'},{c:'te-IN',l:'తెలుగు'},{c:'kn-IN',l:'ಕನ್ನಡ'},
+  {c:'bn-IN',l:'বাংলা'},{c:'fr-FR',l:'Français'},{c:'de-DE',l:'Deutsch'},
+  {c:'es-ES',l:'Español'},{c:'ar-SA',l:'العربية'},{c:'zh-CN',l:'中文'},
+];
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  buildQuickChips();
+  buildCatGrid();
+  buildLangGrid();
+  renderHistory();
+  wireSearch();
+
+  setTimeout(function() {
+    document.getElementById('splash').classList.add('out');
+    document.getElementById('app').classList.add('on');
+  }, 2600);
+});
+
+function wireSearch() {
+  var inp = document.getElementById('searchInput');
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && inp.value.trim()) doSearch(inp.value.trim());
+  });
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────
+function showPage(name) {
+  if (name === currentPage) return;
+  prevPage = currentPage;
+  currentPage = name;
+
+  // Pages
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('on'); });
+  document.getElementById('page' + cap(name)).classList.add('on');
+
+  // Tabs
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('on'); });
+  var tab = document.getElementById('tab-' + name);
+  if (tab) tab.classList.add('on');
+
+  // Scroll to top
+  document.getElementById('mainScreen').scrollTop = 0;
+
+  // Render
+  if (name === 'history') renderHistoryPage();
+  if (name === 'results' && allDrugs.length > 0) renderResultsList();
+}
+
+function goBack() {
+  var dest = prevPage;
+  if (currentPage === 'detail') dest = 'results';
+  else if (currentPage === 'results') dest = 'home';
+  else dest = 'home';
+  showPage(dest);
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ─── SEARCH ───────────────────────────────────────────────────────────────
+function doSearch(q) {
+  if (!q || !q.trim()) return;
+  q = q.trim();
+  document.getElementById('searchInput').value = q;
+  addHistory(q);
+  currentQuery = q;
+  currentResultPage = 1;
+  allDrugs = [];
+
+  showPage('results');
+  document.getElementById('resTitle').textContent = 'Results for "' + q + '"';
+  document.getElementById('resSub').textContent = 'Searching...';
+  document.getElementById('resList').innerHTML = '<div class="loading"><div class="spinner"></div><p>Searching medicines...</p></div>';
+  document.getElementById('resPag').innerHTML = '';
+
+  Promise.allSettled([
+    fetch('https://api.fda.gov/drug/label.json?search=openfda.brand_name:"' + encodeURIComponent(q) + '"+OR+openfda.generic_name:"' + encodeURIComponent(q) + '"&limit=20').then(function(r) { return r.json(); }),
+    fetch('https://rxnav.nlm.nih.gov/REST/drugs.json?name=' + encodeURIComponent(q)).then(function(r) { return r.json(); })
+  ]).then(function(results) {
+    var drugs = [];
+
+    // Parse FDA
+    if (results[0].status === 'fulfilled' && results[0].value && results[0].value.results) {
+      results[0].value.results.forEach(function(r) {
+        drugs.push(parseFDA(r));
+      });
+    }
+
+    // Parse RxNorm as fallback
+    if (drugs.length === 0 && results[1].status === 'fulfilled' && results[1].value && results[1].value.drugGroup) {
+      var groups = results[1].value.drugGroup.conceptGroup || [];
+      groups.forEach(function(g) {
+        (g.conceptProperties || []).forEach(function(c) {
+          drugs.push({
+            id: c.rxcui,
+            name: c.name,
+            generic: c.name,
+            brand: '',
+            manufacturer: 'RxNorm',
+            category: g.tty || 'Drug',
+            description: 'Clinical drug from the RxNorm database (National Library of Medicine).',
+            warnings: '',
+            dosage: 'Consult your prescriber for correct dosage.',
+            brands: [c.name]
+          });
+        });
+      });
+    }
+
+    allDrugs = drugs;
+    currentResultPage = 1;
+    renderResultsList();
+  }).catch(function() {
+    document.getElementById('resList').innerHTML = '<div class="empty"><div class="empty-ic">😕</div><div class="empty-t">Connection error</div><div class="empty-s">Check your internet and try again.</div></div>';
+    document.getElementById('resSub').textContent = '';
+  });
+}
+
+function parseFDA(r) {
+  var openfda = r.openfda || {};
+  return {
+    id: r.id || ('' + Math.random()),
+    name: (openfda.brand_name && openfda.brand_name[0]) || (openfda.generic_name && openfda.generic_name[0]) || 'Unknown',
+    generic: (openfda.generic_name && openfda.generic_name[0]) || '',
+    brand: (openfda.brand_name && openfda.brand_name[0]) || '',
+    manufacturer: (openfda.manufacturer_name && openfda.manufacturer_name[0]) || '',
+    category: (openfda.product_type && openfda.product_type[0]) || 'Drug',
+    description: ((r.description && r.description[0]) || (r.indications_and_usage && r.indications_and_usage[0]) || '').substring(0, 800),
+    warnings: ((r.warnings && r.warnings[0]) || (r.warnings_and_cautions && r.warnings_and_cautions[0]) || '').substring(0, 400),
+    dosage: ((r.dosage_and_administration && r.dosage_and_administration[0]) || 'Consult your prescriber.').substring(0, 400),
+    brands: openfda.brand_name || []
+  };
+}
+
+function renderResultsList() {
+  var total = allDrugs.length;
+  var pages = Math.ceil(total / RESULTS_PER_PAGE) || 1;
+  var page = currentResultPage;
+  var slice = allDrugs.slice((page - 1) * RESULTS_PER_PAGE, page * RESULTS_PER_PAGE);
+
+  document.getElementById('resTitle').textContent = 'Results for "' + currentQuery + '"';
+  document.getElementById('resSub').textContent = total + ' medicine' + (total !== 1 ? 's' : '') + ' found · Page ' + page + ' of ' + pages;
+
+  if (total === 0) {
+    document.getElementById('resList').innerHTML = '<div class="empty"><div class="empty-ic">💊</div><div class="empty-t">No results for "' + esc(currentQuery) + '"</div><div class="empty-s">Try a different name or spelling.</div></div>';
+    document.getElementById('resPag').innerHTML = '';
+    return;
+  }
+
+  var html = '';
+  slice.forEach(function(d, i) {
+    var isRx = d.category.indexOf('PRESCRIPTION') > -1;
+    var tagClass = isRx ? 'tag-rx' : 'tag-otc';
+    var tagText = isRx ? 'Rx' : 'OTC';
+    var idx = (page - 1) * RESULTS_PER_PAGE + i;
+    html += '<div class="res-card" onclick="openDetail(' + idx + ')">' +
+      '<div class="res-icon">💊</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="res-name">' + esc(d.name) + '</div>' +
+        '<div class="res-gen">' + esc(d.generic || d.manufacturer || '—') + '</div>' +
+      '</div>' +
+      '<span class="res-tag ' + tagClass + '">' + tagText + '</span>' +
+    '</div>';
+  });
+  document.getElementById('resList').innerHTML = html;
+
+  // Pagination
+  if (pages <= 1) { document.getElementById('resPag').innerHTML = ''; return; }
+  var pag = '';
+  if (page > 1) pag += '<button class="pb" onclick="changePage(' + (page-1) + ')">‹</button>';
+  for (var i = Math.max(1, page-2); i <= Math.min(pages, page+2); i++) {
+    pag += '<button class="pb' + (i===page?' on':'') + '" onclick="changePage(' + i + ')">' + i + '</button>';
+  }
+  if (page < pages) pag += '<button class="pb" onclick="changePage(' + (page+1) + ')">›</button>';
+  document.getElementById('resPag').innerHTML = pag;
+}
+
+function changePage(p) {
+  currentResultPage = p;
+  renderResultsList();
+  document.getElementById('mainScreen').scrollTop = 0;
+}
+
+// ─── DETAIL ───────────────────────────────────────────────────────────────
+function openDetail(idx) {
+  var d = allDrugs[idx];
+  if (!d) return;
+  currentDrug = d;
+  prevPage = 'results';
+  currentPage = 'detail';
+
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('on'); });
+  document.getElementById('pageDetail').classList.add('on');
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('on'); });
+  document.getElementById('mainScreen').scrollTop = 0;
+
+  // Stop any speech
+  if (speaking) { window.speechSynthesis.cancel(); speaking = false; }
+
+  var isRx = d.category.indexOf('PRESCRIPTION') > -1;
+  var brandsHtml = (d.brands && d.brands.length)
+    ? d.brands.map(function(b) { return '<span class="brand-pill">' + esc(b) + '</span>'; }).join('')
+    : '<span class="brand-pill">' + esc(d.name) + '</span>';
+
+  var html =
+    '<div class="det-hero">' +
+      '<div class="av-wrap">' +
+        '<div class="av-ring" id="avRing"></div>' +
+        '<img class="av-img" id="avImg" src="chelsi.png" onclick="speakDrug()" onerror="this.style.opacity=0.5" alt="Chelsi">' +
+      '</div>' +
+      '<div class="det-name">' + esc(d.name) + '</div>' +
+      (d.generic ? '<div class="det-generic">' + esc(d.generic) + '</div>' : '') +
+      '<div class="det-badges">' +
+        '<span class="badge ' + (isRx ? 'bdg-rx' : 'bdg-otc') + '">' + (isRx ? 'Prescription Only' : 'Over the Counter') + '</span>' +
+        '<span class="badge bdg-fda">OpenFDA Verified</span>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="info-tiles">' +
+      '<div class="itile"><div class="itile-l">Type</div><div class="itile-v">' + (isRx ? 'Rx' : 'OTC') + '</div></div>' +
+      '<div class="itile"><div class="itile-l">Route</div><div class="itile-v">Oral/IV</div></div>' +
+      '<div class="itile"><div class="itile-l">Source</div><div class="itile-v">OpenFDA</div></div>' +
+    '</div>' +
+
+    '<button class="speak-btn" id="speakBtn" onclick="speakDrug()">🔊 Hear Drug Info</button>' +
+    '<div class="speak-bubble" id="speakBubble"></div>' +
+
+    (d.description ? '<div class="det-section"><div class="det-sec-title">About</div><div class="det-body">' + esc(d.description) + '</div></div>' : '') +
+    (d.dosage ? '<div class="det-section"><div class="det-sec-title">Dosage & Administration</div><div class="det-body">' + esc(d.dosage) + '</div></div>' : '') +
+    (d.warnings ? '<div class="warn-box"><span style="font-size:18px;flex-shrink:0;">⚠️</span><span class="warn-txt">' + esc(d.warnings) + '</span></div>' : '') +
+
+    '<div class="det-section"><div class="det-sec-title">Brand Names</div><div class="brands-wrap">' + brandsHtml + '</div></div>' +
+
+    '<div class="det-section" id="relatedSection"><div class="det-sec-title">Related Medicines</div><div id="relatedList"><div class="loading"><div class="spinner" style="width:20px;height:20px;border-width:2px;"></div></div></div></div>' +
+
+    '<div style="height:100px;"></div>';
+
+  document.getElementById('detailContent').innerHTML = html;
+  fetchRelated(d.generic || d.name);
+}
+
+function fetchRelated(name) {
+  fetch('https://api.fda.gov/drug/label.json?search=openfda.generic_name:"' + encodeURIComponent(name) + '"&limit=6')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var el = document.getElementById('relatedList');
+      if (!el) return;
+      var items = (data.results || []).slice(0, 5).map(parseFDA).filter(function(d) { return currentDrug && d.name !== currentDrug.name; });
+      if (!items.length) { el.innerHTML = '<span style="font-size:13px;color:var(--t3);">No related medicines found.</span>'; return; }
+      // Add to allDrugs temporarily for clicking
+      var startIdx = allDrugs.length;
+      allDrugs = allDrugs.concat(items);
+      el.innerHTML = items.map(function(d, i) {
+        return '<div class="res-card" style="margin-bottom:8px;" onclick="openDetail(' + (startIdx+i) + ')">' +
+          '<div class="res-icon" style="width:34px;height:34px;font-size:14px;">💊</div>' +
+          '<div style="flex:1;min-width:0;"><div class="res-name" style="font-size:13px;">' + esc(d.name) + '</div><div class="res-gen">' + esc(d.generic || '—') + '</div></div>' +
+          '<span style="color:var(--t3);font-size:16px;">›</span></div>';
+      }).join('');
+    })
+    .catch(function() {
+      var el = document.getElementById('relatedList');
+      if (el) el.innerHTML = '<span style="font-size:13px;color:var(--t3);">Could not load related medicines.</span>';
+    });
+}
+
+// ─── SPEECH ───────────────────────────────────────────────────────────────
+function speakDrug() {
+  if (!currentDrug) return;
+  if (speaking) {
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
+    return;
+  }
+  var text = currentDrug.name + '. ' +
+    (currentDrug.generic ? 'Generic name: ' + currentDrug.generic + '. ' : '') +
+    (currentDrug.description || '').substring(0, 500);
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = lang; u.rate = 0.88; u.pitch = 1.05;
+  u.onstart = function() { setSpeaking(true); showBubble(text); };
+  u.onend = u.onerror = function() { setSpeaking(false); };
+  window.speechSynthesis.speak(u);
+}
+
+function setSpeaking(s) {
+  speaking = s;
+  var img = document.getElementById('avImg');
+  var ring = document.getElementById('avRing');
+  var btn = document.getElementById('speakBtn');
+  if (img) img.classList.toggle('speaking', s);
+  if (ring) ring.classList.toggle('on', s);
+  if (btn) { btn.textContent = s ? '🔇 Stop Speaking' : '🔊 Hear Drug Info'; btn.classList.toggle('stop', s); }
+}
+
+function showBubble(text) {
+  var el = document.getElementById('speakBubble');
+  if (!el) return;
+  el.textContent = text.substring(0, 220) + '...';
+  el.classList.add('on');
+  setTimeout(function() { el.classList.remove('on'); }, 12000);
+}
+
+// ─── VOICE SEARCH ─────────────────────────────────────────────────────────
+function toggleMic() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Voice search requires Chrome or Edge browser.'); return; }
+  if (recog) { recog.abort(); recog = null; document.getElementById('micBtn').classList.remove('on'); return; }
+  recog = new SR();
+  recog.lang = lang; recog.continuous = false; recog.interimResults = false;
+  recog.onresult = function(e) {
+    var t = e.results[0][0].transcript;
+    document.getElementById('searchInput').value = t;
+    document.getElementById('micBtn').classList.remove('on');
+    recog = null;
+    doSearch(t);
+  };
+  recog.onerror = recog.onend = function() {
+    document.getElementById('micBtn').classList.remove('on');
+    recog = null;
+  };
+  recog.start();
+  document.getElementById('micBtn').classList.add('on');
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────────────────
+function addHistory(q) {
+  history = history.filter(function(h) { return h.term.toLowerCase() !== q.toLowerCase(); });
+  history.unshift({ term: q, time: Date.now() });
+  if (history.length > 100) history = history.slice(0, 100);
+  localStorage.setItem('cg_hist', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  var recent = history.slice(0, 10);
+  var el = document.getElementById('historyChips');
+  var btn = document.getElementById('showAllBtn');
+  if (!recent.length) {
+    el.innerHTML = '<span style="font-size:13px;color:var(--t3);">Your recent searches appear here.</span>';
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  el.innerHTML = recent.map(function(h) {
+    return '<div class="chip" onclick="doSearch(\'' + esc2(h.term) + '\')">' +
+      esc(h.term) +
+      ' <span class="chip-x" onclick="removeHistory(\'' + esc2(h.term) + '\',event)">✕</span>' +
+    '</div>';
+  }).join('');
+}
+
+function renderHistoryPage() {
+  var el = document.getElementById('histList');
+  if (!history.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-ic">🕐</div><div class="empty-t">No search history</div><div class="empty-s">Your searches will appear here.</div></div>';
+    return;
+  }
+  el.innerHTML = history.map(function(h, i) {
+    return '<div class="hist-row" onclick="doSearch(\'' + esc2(h.term) + '\')">' +
+      '<span class="hist-num">' + (i+1) + '</span>' +
+      '<span class="hist-term">' + esc(h.term) + '</span>' +
+      '<span class="hist-time">' + timeAgo(h.time) + '</span>' +
+      '<span class="hist-del" onclick="removeHistory(\'' + esc2(h.term) + '\',event)">✕</span>' +
+    '</div>';
+  }).join('');
+}
+
+function removeHistory(term, e) {
+  if (e) e.stopPropagation();
+  history = history.filter(function(h) { return h.term !== term; });
+  localStorage.setItem('cg_hist', JSON.stringify(history));
+  renderHistory();
+  renderHistoryPage();
+}
+
+function clearAllHistory() {
+  history = [];
+  localStorage.setItem('cg_hist', JSON.stringify(history));
+  renderHistory();
+  renderHistoryPage();
+}
+
+// ─── THEME ────────────────────────────────────────────────────────────────
+function setTheme(t) {
+  theme = t;
+  document.documentElement.setAttribute('data-theme', t === 'dark' ? '' : t);
+  document.querySelectorAll('.theme-btn').forEach(function(b) { b.classList.remove('on'); });
+  var map = {'dark':0,'light':1,'amoled':2};
+  var btns = document.querySelectorAll('.theme-btn');
+  if (btns[map[t]]) btns[map[t]].classList.add('on');
+}
+
+function cycleTheme() {
+  var themes = ['dark','light','amoled'];
+  setTheme(themes[(themes.indexOf(theme) + 1) % themes.length]);
+}
+
+// ─── LANGUAGE ─────────────────────────────────────────────────────────────
+function buildLangGrid() {
+  document.getElementById('langGrid').innerHTML = LANGS.map(function(l) {
+    return '<div class="lang-btn' + (l.c === lang ? ' on' : '') + '" onclick="setLang(\'' + l.c + '\')">' + l.l + '</div>';
+  }).join('');
+}
+
+function setLang(c) {
+  lang = c;
+  document.getElementById('langSel').value = c;
+  document.querySelectorAll('.lang-btn').forEach(function(b) { b.classList.remove('on'); });
+  var btns = document.querySelectorAll('.lang-btn');
+  LANGS.forEach(function(l, i) { if (l.c === c && btns[i]) btns[i].classList.add('on'); });
+}
+
+document.getElementById('langSel').addEventListener('change', function() { setLang(this.value); });
+
+// ─── BUILD STATIC UI ──────────────────────────────────────────────────────
+function buildQuickChips() {
+  document.getElementById('quickChips').innerHTML = QUICK.map(function(q) {
+    return '<div class="chip" onclick="doSearch(\'' + q + '\')">' + q + '</div>';
+  }).join('');
+}
+
+function buildCatGrid() {
+  document.getElementById('catGrid').innerHTML = CATS.map(function(c) {
+    return '<div class="cat-card" onclick="doSearch(\'' + c.q + '\')">' +
+      '<div class="cat-icon">' + c.ic + '</div>' +
+      '<div><div class="cat-name">' + c.name + '</div></div>' +
+    '</div>';
+  }).join('');
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────
+function timeAgo(ts) {
+  var s = (Date.now() - ts) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+
+function esc(s) {
+  return (s || '').toString()
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function esc2(s) {
+  return (s || '').toString().replace(/'/g,"\\'").replace(/"/g,'\\"');
+}
+</script>
+</body>
+</html>
